@@ -1,10 +1,11 @@
 """Deterministic 2D swarm engine: N equal discs in one tank chamber (numba).
 
 The chamber is the box ``x0..x1`` × ``top..floor``. Balls fall under gravity and bounce off
-the walls, the lid, the floor and each other. Every step each ball is nudged back toward the
-speed an energy-conserving bouncing ball would have at its height (``speed`` at the lid), so
-collisions never drain the swarm into a heap: every ball keeps travelling lid to floor, and hits
-per second on the floor grow with the number of balls.
+the floor, the walls, the lid and each other. Each ball has its own bounce height (apex), and
+every step it is nudged back toward the speed an energy-conserving bouncing ball has at its
+height, so collisions never drain the swarm into a dead heap: low and high bouncers mix, the
+swarm is densest at the floor, and hits per ball don't depend on how many balls there are, so
+hits per second on the floor grow with the count.
 
 Determinism: the grid is built serially (counting sort); the parallel kernels only write the
 entries of the ball they process (Jacobi style), reading the previous state, so the result does
@@ -129,15 +130,40 @@ def _collide(x, y, vx, vy, r, gw, gh, cell_of, start, order, exch, nx_out, ny_ou
 
 @njit(cache=True, parallel=True)
 def _move(
-    x, y, vx, vy, r, x0, x1, top, floor, g, speed, relax, jitter, min_hit, min_vy, dt, step, hit
+    x,
+    y,
+    vx,
+    vy,
+    r,
+    x0,
+    x1,
+    top,
+    floor,
+    g,
+    speed,
+    apex_min,
+    relax,
+    jitter,
+    min_hit,
+    min_vy,
+    dt,
+    step,
+    hit,
 ):
     """Gravity, speed relaxation, integration and wall/floor bounces. hit[i]=1 on a floor hit."""
     n = x.size
     for i in prange(n):
         hit[i] = 0
-        # energy-conserving target speed: `speed` at the lid, faster lower down (a bouncing
-        # ball under gravity), so balls fall and bounce but never settle into a heap
-        tgt = math.sqrt(speed * speed + 2.0 * g * max(y[i] - top, 0.0))
+        # energy-conserving target speed of a bouncing ball: each ball has its own apex (a fixed
+        # share of the chamber height above the floor, from a hash of its index), so low and
+        # high bouncers mix and the swarm is densest at the floor, like real bouncy balls.
+        # `speed` is the speed left at the apex (sideways drift), so nothing ever stops.
+        if g > 0.0:
+            share = apex_min + (1.0 - apex_min) * _hash01(np.int64(i), np.int64(99991))
+            apex_y = floor - share * (floor - top)
+            tgt = math.sqrt(speed * speed + 2.0 * g * max(y[i] - apex_y, 0.0))
+        else:
+            tgt = speed
         pvx = vx[i]
         pvy = vy[i] + g * dt
         s = math.sqrt(pvx * pvx + pvy * pvy)
@@ -190,7 +216,9 @@ def _move(
         # never skim: keep at least `min_vy` of the speed vertical, so no ball (a lone one
         # especially) can bounce between the side walls for ever without reaching the floor
         sp = math.sqrt(pvx * pvx + pvy * pvy)
-        if sp > 1e-9 and abs(pvy) < min_vy * sp:
+        # (without gravity only: under gravity a ball can't skim, and forcing a vertical speed at
+        # the top of a bounce would kick it back up so it never fell)
+        if g <= 0.0 and sp > 1e-9 and abs(pvy) < min_vy * sp:
             sy = 1.0 if pvy >= 0.0 else -1.0
             pvy = sy * min_vy * sp
             pvx = math.copysign(math.sqrt(max(sp * sp - pvy * pvy, 0.0)), pvx)
@@ -210,7 +238,8 @@ class Swarm:
     floor: float
     radius: float
     speed: float = 520.0
-    gravity: float = 0.0  # px/s²; the target speed grows with depth, so no heap forms
+    gravity: float = 0.0  # px/s² (downward); balls bounce, densest at the floor
+    apex_min: float = 0.12  # lowest bounce, as a share of the chamber height
     exchange: float = 0.0  # share of the elastic velocity swap (1 = billiards; >0 clumps)
     min_vy: float = 0.35  # sin of the flattest allowed angle (~20°)
     min_hit: float = 0.15  # a floor contact counts as a hit only above this share of `speed`
@@ -304,6 +333,7 @@ class Swarm:
             self.floor,
             self.gravity,
             self.speed,
+            self.apex_min,
             self.relax,
             self.jitter,
             self.min_hit,

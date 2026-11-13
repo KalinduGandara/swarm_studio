@@ -14,8 +14,8 @@ No other runtime dependencies without asking the user.
 - Physics only (tuning, ~1-2 min): `uv run swarm plan --preset x7 [--hp ...] [--seed N]` → floor-break times, turn, lead change, winner, `loser_hp_left`
 - Stills: `uv run swarm frames --preset x7 --at 0.1,10,20` → `out/<stem>_t<s>.png`
 - Render: `uv run swarm race --preset x7 [--seed N] [--out DIR] [--stem NAME]` (~1 s of wall time per s of video at 100k+ balls)
-- Custom: `--left "MANY:500:mul:2" --right "ONE:1:mul:7" --hp 5,23,72,390,2600,11700,350000 --hook "..." --tag "One vs Many · #N"`
-- Flags: `--fps 60 --gate 0.5 --hold 2.2 --speed 250 --gravity 700 --max-seconds 90 --no-sound --quiet`
+- Custom: `--left "MANY:500:mul:2" --right "ONE:1:mul:7" --hp 8,26,115,620,3900,21800,485000 --hook "..." --tag "One vs Many · #N"`
+- Flags: `--fps 60 --gate 0.5 --hold 2.2 --speed 150 --gravity 700 --max-seconds 90 --no-sound --quiet`
 
 ## Layout (src/swarm_studio)
 - `engine.py` `Swarm`: one tank's balls. Jacobi collision pass (push apart only; `exchange=0`
@@ -30,12 +30,14 @@ No other runtime dependencies without asking the user.
   `studio.py` pipeline (stream frames → ffmpeg, mix audio, mux, export pack). `cli.py` presets.
 
 ## Physics facts (use them to set HP)
-Gravity is energy-conserving: each ball is nudged toward the speed a bouncing ball has at its
-height (`speed` at the lid, `sqrt(speed² + 2·g·depth)` lower down), so balls fall, bounce and
-keep reaching the lid; no heap forms (densest near the lid). Hits per ball per second depend on
-the chamber height but **not on the count** (tested), so damage grows with the number of balls.
-Measured at speed 250, gravity 700: ~1.0 hits/ball/s on floor 1 of 7, ~0.25 in the full tank
-(7 floors). Floor time ≈ HP ÷ (count × rate) + ~0.4 s for balls to reach a new floor. A lone
+Gravity points down and is energy-conserving: each ball has its own bounce height (a share of
+the chamber height, `apex_min`..1, from a hash of its index) and is nudged toward the speed a
+bouncing ball has at its height (`speed` at the apex, faster lower down). So the swarm is densest
+at the floor and thins upward, never a dead heap. Hits per ball per second depend on the chamber
+height but **not on the count** (tested), so damage grows with the number of balls. Measured at
+speed 150, gravity 700: ~1.1 hits/ball/s on floor 1 of 7, ~0.48 in the full tank (7 floors);
+roughly ∝ 1/√(chamber height). Don't force a minimum vertical speed under gravity (it kicked
+balls back up at the top of each bounce: the "upside-down gravity" bug). Floor time ≈ HP ÷ (count × rate) + ~0.4 s for balls to reach a new floor. A lone
 ball's floor 1 varies by ~1 s between seeds. Design HP, then confirm with `swarm plan` on 3 seeds.
 Keep every count ≲ 120,000 (ball radius bottoms out at 0.6 px; render time grows with count).
 

@@ -17,7 +17,7 @@ PRESETS: dict[str, dict] = {
     "x7": {
         "left": "MANY:500:mul:2",
         "right": "ONE:1:mul:7",
-        "hp": "5,23,72,390,2600,11700,350000",
+        "hp": "8,26,115,620,3900,21800,485000",
         "hook": "Can 1 ball ×7 beat 500?",
         "tag": "One vs Many · #2",
     },
@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> None:
         sp.add_argument("--fps", type=int, default=60)
         sp.add_argument("--gate", type=float, default=0.5)
         sp.add_argument("--hold", type=float, default=2.2)
-        sp.add_argument("--speed", type=float, default=250.0, help="px/s at the lid")
+        sp.add_argument("--speed", type=float, default=150.0, help="px/s at the top of a bounce")
         sp.add_argument("--gravity", type=float, default=700.0, help="px/s²")
         sp.add_argument("--max-seconds", type=float, default=90.0)
         sp.add_argument("--out", type=Path, default=Path("out"))

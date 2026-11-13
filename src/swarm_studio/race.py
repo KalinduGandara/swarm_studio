@@ -67,7 +67,7 @@ class Config:
     hold: float = 2.2  # seconds on the result
     loop_fade: float = 0.4
     max_seconds: float = 90.0
-    speed: float = 250.0  # ball speed at the lid (px/s); faster lower down under gravity
+    speed: float = 150.0  # speed at the top of a bounce (px/s); faster lower down
     gravity: float = 700.0  # px/s²
     fill: float = 0.3  # share of the chamber area the balls cover (sets the ball radius)
     tag: str = "One vs Many"

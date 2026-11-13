@@ -16,9 +16,9 @@ Tens of thousands of balls are simulated with a small deterministic numba partic
   Rules: `mul:N` (×N), `add:N` (+N), `pow:N` (count^N).
 - **Floors:** one HP list shared by both tanks (same race for both). The number sits just
   below each floor line and counts down with every hit; the line thins and dims as its HP falls.
-- **Physics (bouncing, never a heap):** balls fall under gravity and bounce off the floor, the
-  walls and each other with no energy loss (each is nudged back to the speed a bouncing ball has
-  at its height), so every ball keeps travelling lid to floor. Hits per ball per second don't
+- **Physics (bouncing, never a dead heap):** balls fall under downward gravity and bounce off the
+  floor, the walls and each other with no energy loss; each ball has its own bounce height, so
+  the swarm is densest at the floor and thins upward, like a box of bouncy balls. Hits per ball per second don't
   depend on the count, so hits per second on a floor grow with the number of balls, which is
   what makes "more balls = faster" real. A hit is a ball reaching the active floor moving down.
 - **Ball size:** all balls of a side share one radius that shrinks as the count grows (a lone
@@ -41,14 +41,14 @@ First three videos (user, 2026-11-13): 1) 1 ball ×7 vs 500 ×2 (1,000 made the 
 ```bash
 uv sync
 uv run swarm race --preset x7 --seed 1                  # render + export pack into out/
-uv run swarm race --left "MANY:500:mul:2" --right "ONE:1:mul:7" --hp 5,23,72,390,2600,11700,350000 \
+uv run swarm race --left "MANY:500:mul:2" --right "ONE:1:mul:7" --hp 8,26,115,620,3900,21800,485000 \
     --hook "Can 1 ball ×7 beat 500?" --tag "One vs Many · #2" --seed 1
 uv run swarm plan --preset x7 --seed 1                  # physics only: floor times, winner, margin
 uv run swarm frames --preset x7 --seed 1 --at 0.1,10,20 # PNG stills for checking
 uv run swarm list-presets
 ```
 
-Common flags: `--fps 60 --gate 0.5 --hold 2.2 --speed 250 --gravity 700 --max-seconds 90 --out out/ --stem NAME --no-sound`.
+Common flags: `--fps 60 --gate 0.5 --hold 2.2 --speed 150 --gravity 700 --max-seconds 90 --out out/ --stem NAME --no-sound`.
 
 ## Export pack
 
