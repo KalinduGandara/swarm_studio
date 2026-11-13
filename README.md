@@ -16,10 +16,11 @@ Tens of thousands of balls are simulated with a small deterministic numba partic
   Rules: `mul:N` (×N), `add:N` (+N), `pow:N` (count^N).
 - **Floors:** one HP list shared by both tanks (same race for both). The number sits just
   below each floor line and counts down with every hit; the line thins and dims as its HP falls.
-- **Physics (gas, not a pile):** balls keep a steady speed (like bouncekit's `constant_speed`)
-  under light gravity, collide elastically with each other and the walls, and fill their
-  chamber. Hits per second on a floor therefore grow with the number of balls, which is what
-  makes "more balls = faster" real. A hit is a ball reaching the active floor while moving down.
+- **Physics (bouncing, never a heap):** balls fall under gravity and bounce off the floor, the
+  walls and each other with no energy loss (each is nudged back to the speed a bouncing ball has
+  at its height), so every ball keeps travelling lid to floor. Hits per ball per second don't
+  depend on the count, so hits per second on a floor grow with the number of balls, which is
+  what makes "more balls = faster" real. A hit is a ball reaching the active floor moving down.
 - **Ball size:** all balls of a side share one radius that shrinks as the count grows (a lone
   ball is drawn big; 60,000 balls are ~1.5 px dots). Keep the biggest count ≲ 70,000 per side.
 - **Growth on a break:** new balls are copies of existing balls with a small jitter, so the
@@ -27,27 +28,27 @@ Tens of thousands of balls are simulated with a small deterministic numba partic
 - **Beats:** start gate; floor breaks (particles + marimba); the turning point when the side
   that started behind has more balls ("ONE HAS MORE BALLS!" + sting); the lead change; the win
   ("ONE WINS!" + margin "MANY WAS N HP SHORT"); hold; loop fade into frame 0.
-- **Sound (procedural):** a soft pluck per batch of hits per side (rate-limited, pitch rises
-  with the floor), marimba on breaks, stings on turn/lead/win. 48 kHz stereo, peak -1 dBFS.
+- **Sound (procedural):** the same pluck tone for every batch of hits (rate-limited, panned to
+  its tank; user, 2026-11-13), marimba on breaks, stings on turn/lead/win. 48 kHz stereo, peak -1 dBFS.
 - **Determinism:** same args + seed → same frames and byte-identical audio. Seeded numpy RNG
   only; the parallel kernels write each ball's own result only (no races).
 
-First three videos (user, 2026-11-13): 1) 1 ball ×7 vs 1,000 ×2; 2) adding vs multiplying
-(5,000 +5,000 per floor vs 1 ×6); 3) squaring (2 balls squared every floor vs 1,000 ×2).
+First three videos (user, 2026-11-13): 1) 1 ball ×7 vs 500 ×2 (1,000 made the last floor drag);
+2) adding vs multiplying (1,000 +1,000 per floor vs 1 ×6); 3) squaring (2 balls squared every floor vs 1,000 ×2).
 
 ## CLI
 
 ```bash
 uv sync
 uv run swarm race --preset x7 --seed 1                  # render + export pack into out/
-uv run swarm race --left "MANY:1000:mul:2" --right "ONE:1:mul:7" --hp 3,20,140,1000,6500,42000 \
-    --hook "Can 1 ball ×7 beat 1,000?" --tag "One vs Many · #2" --seed 1
+uv run swarm race --left "MANY:500:mul:2" --right "ONE:1:mul:7" --hp 5,23,72,390,2600,11700,350000 \
+    --hook "Can 1 ball ×7 beat 500?" --tag "One vs Many · #2" --seed 1
 uv run swarm plan --preset x7 --seed 1                  # physics only: floor times, winner, margin
 uv run swarm frames --preset x7 --seed 1 --at 0.1,10,20 # PNG stills for checking
 uv run swarm list-presets
 ```
 
-Common flags: `--fps 60 --gate 0.5 --hold 2.2 --max-seconds 60 --out out/ --stem NAME --no-sound`.
+Common flags: `--fps 60 --gate 0.5 --hold 2.2 --speed 250 --gravity 700 --max-seconds 90 --out out/ --stem NAME --no-sound`.
 
 ## Export pack
 

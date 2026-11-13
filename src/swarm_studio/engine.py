@@ -1,9 +1,10 @@
 """Deterministic 2D swarm engine: N equal discs in one tank chamber (numba).
 
-The chamber is the box ``x0..x1`` × ``top..floor``. Balls move at a steady speed
-(optional gravity), bounce elastically off the walls, the lid, the floor and each other, and
-are nudged back toward a target speed every step so the swarm never settles into a pile (a
-gas, not a heap): hits per second on the floor then grow with the number of balls.
+The chamber is the box ``x0..x1`` × ``top..floor``. Balls fall under gravity and bounce off
+the walls, the lid, the floor and each other. Every step each ball is nudged back toward the
+speed an energy-conserving bouncing ball would have at its height (``speed`` at the lid), so
+collisions never drain the swarm into a heap: every ball keeps travelling lid to floor, and hits
+per second on the floor grow with the number of balls.
 
 Determinism: the grid is built serially (counting sort); the parallel kernels only write the
 entries of the ball they process (Jacobi style), reading the previous state, so the result does
@@ -134,21 +135,24 @@ def _move(
     n = x.size
     for i in prange(n):
         hit[i] = 0
+        # energy-conserving target speed: `speed` at the lid, faster lower down (a bouncing
+        # ball under gravity), so balls fall and bounce but never settle into a heap
+        tgt = math.sqrt(speed * speed + 2.0 * g * max(y[i] - top, 0.0))
         pvx = vx[i]
         pvy = vy[i] + g * dt
         s = math.sqrt(pvx * pvx + pvy * pvy)
-        if s > 1.5 * speed:  # hard cap: no ball runs away
-            pvx *= 1.5 * speed / s
-            pvy *= 1.5 * speed / s
-            s = 1.5 * speed
+        if s > 1.5 * tgt:  # hard cap: no ball runs away
+            pvx *= 1.5 * tgt / s
+            pvy *= 1.5 * tgt / s
+            s = 1.5 * tgt
         if s > 1e-9:
-            f = 1.0 + relax * (speed / s - 1.0)
+            f = 1.0 + relax * (tgt / s - 1.0)
             pvx *= f
             pvy *= f
         else:
             a = 6.283185307179586 * _hash01(np.int64(i), np.int64(step))
-            pvx = speed * math.cos(a)
-            pvy = speed * math.sin(a)
+            pvx = tgt * math.cos(a)
+            pvy = tgt * math.sin(a)
         px = x[i] + pvx * dt
         py = y[i] + pvy * dt
         bounced = False
@@ -167,7 +171,7 @@ def _move(
         elif py > floor - r:
             py = floor - r
             if pvy > 0.0:
-                if pvy > min_hit * speed:
+                if pvy > min_hit * tgt:
                     hit[i] = 1
                 pvy = -pvy
             bounced = True
@@ -206,7 +210,7 @@ class Swarm:
     floor: float
     radius: float
     speed: float = 520.0
-    gravity: float = 0.0  # >0 packs the swarm into a heap at the floor; keep it a gas
+    gravity: float = 0.0  # px/s²; the target speed grows with depth, so no heap forms
     exchange: float = 0.0  # share of the elastic velocity swap (1 = billiards; >0 clumps)
     min_vy: float = 0.35  # sin of the flattest allowed angle (~20°)
     min_hit: float = 0.15  # a floor contact counts as a hit only above this share of `speed`

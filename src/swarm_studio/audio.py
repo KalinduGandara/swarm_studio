@@ -1,5 +1,6 @@
-"""Procedural soundtrack from the race log: plucks for floor hits, marimba for breaks, stings
-for the turning point, the lead change and the win. 48 kHz stereo float, no randomness."""
+"""Procedural soundtrack from the race log: one pluck tone for every floor hit, marimba for
+breaks, stings for the turning point, the lead change and the win. 48 kHz stereo float, no
+randomness."""
 
 from __future__ import annotations
 
@@ -11,7 +12,6 @@ from pathlib import Path
 import numpy as np
 
 SR = 48_000
-PENTA = (0, 2, 4, 7, 9)
 MAJOR = (0, 2, 4, 5, 7, 9, 11)
 
 
@@ -70,8 +70,7 @@ def soundtrack(log: list[dict], events: list, seconds: float, fps: int, fade: fl
     """``log``: one dict per frame {t, hits: [left, right], floor: [left, right]}."""
     mix = Mixer(seconds)
     last = [-1.0, -1.0]
-    step = [0, 0]
-    base = (60, 67)  # C4 for the left tank, G4 for the right
+    hit_note = 72  # every hit plays the same tone (C5), panned to its tank
     pans = (-0.55, 0.55)
     for row in log:
         for i in (0, 1):
@@ -79,10 +78,8 @@ def soundtrack(log: list[dict], events: list, seconds: float, fps: int, fade: fl
             if h <= 0 or row["t"] - last[i] < 0.075:
                 continue
             last[i] = row["t"]
-            deg = PENTA[step[i] % 5] + 12 * ((step[i] // 5) % 2)
-            step[i] += 1
             gain = 0.22 * min(1.0, 0.45 + 0.12 * math.log10(1 + h))
-            mix.add(row["t"], "pluck", base[i] + deg, gain, pans[i])
+            mix.add(row["t"], "pluck", hit_note, gain, pans[i])
     for ev in events:
         if ev.kind == "break":
             midi = 60 + MAJOR[ev.floor % 7] + 12 * (ev.floor // 7)

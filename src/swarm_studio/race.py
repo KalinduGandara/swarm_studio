@@ -67,7 +67,8 @@ class Config:
     hold: float = 2.2  # seconds on the result
     loop_fade: float = 0.4
     max_seconds: float = 90.0
-    speed: float = 400.0
+    speed: float = 250.0  # ball speed at the lid (px/s); faster lower down under gravity
+    gravity: float = 700.0  # px/s²
     fill: float = 0.3  # share of the chamber area the balls cover (sets the ball radius)
     tag: str = "One vs Many"
     hook: str = ""
@@ -122,7 +123,15 @@ class Race:
         for i, team in enumerate((cfg.left, cfg.right)):
             x0, x1 = TANK_X[i]
             floor = cfg.floor_y(0)
-            sw = Swarm(x0, x1, TOP, floor, self.radius(team.start, 0), speed=cfg.speed)
+            sw = Swarm(
+                x0,
+                x1,
+                TOP,
+                floor,
+                self.radius(team.start, 0),
+                speed=cfg.speed,
+                gravity=cfg.gravity,
+            )
             sw.scatter(team.start, self.rng, (TOP, floor))
             self.sides.append(Side(team, sw, team.start, hp=float(cfg.hp[0])))
         self.events: list[Event] = []

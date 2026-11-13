@@ -60,3 +60,17 @@ def test_multiply_adds_copies():
     s = make(100)
     s.multiply(600, np.random.default_rng(2))
     assert s.n == 700
+
+
+def test_gravity_keeps_hits_per_ball_independent_of_count_and_no_heap():
+    rates = []
+    for n in (300, 6000):
+        s = Swarm(80.0, 500.0, 590.0, 1000.0, 1.2, speed=250.0, gravity=700.0)
+        s.scatter(n, np.random.default_rng(4), (590.0, 1000.0))
+        for _ in range(240):
+            s.step(1 / 240)
+        hits = sum(s.step(1 / 240) for _ in range(480))
+        rates.append(hits / 2.0 / n)
+        rows = np.histogram(s.y, bins=5, range=(590.0, 1000.0))[0]
+        assert rows[-1] <= rows[0]  # densest near the top of the bounce, never a heap
+    assert abs(rates[0] - rates[1]) < 0.25 * rates[1]
